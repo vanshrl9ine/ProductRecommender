@@ -129,7 +129,22 @@ if st.session_state.login_successful:
 
     indices = pd.Series(st.session_state.df.index, index=st.session_state.df['product_url']).drop_duplicates()
 
+    #without considering any intercations
+    def product_recommendation(title, sig=st.session_state.sig, indices=indices, dataset=st.session_state.df):
+        indx = indices[title]
 
+        sig_scores = list(enumerate(sig[indx]))
+
+        # sorting products
+        sig_scores = sorted(sig_scores, key=lambda x: x[1], reverse=True)
+
+        sig_scores = sig_scores[1:6]
+
+        product_indices = [i[0] for i in sig_scores]
+
+        return dataset['product_url'].iloc[product_indices]
+
+    #considering interactions
     def product_recommendation(title, sig=st.session_state.sig, indices=indices, dataset=st.session_state.df):
         indx = indices[title]
 
@@ -144,38 +159,55 @@ if st.session_state.login_successful:
         user_search_data = db.child(st.session_state.user['localId']).child("user_searches").get().val()
 
         if user_cart_data:
-            user_cart_tags = [item['cart_tags'] for item in user_cart_data.values()]
+            user_cart_tags = [item.get('cart_tags',[]) for item in user_cart_data.values()]
 
         if user_wishlist_data:
-            user_wishlist_tags = [item['wishlist_tags'] for item in user_wishlist_data.values()]
+            user_wishlist_tags = [item.get('wishlist_tags',[]) for item in user_wishlist_data.values()]
 
         if user_search_data:
             user_search_tags = [item.get('search_tags', []) for item in user_search_data.values()]
 
-        st.write("User Cart Tags:", user_cart_tags)
-        st.write("User Wishlist Tags:", user_wishlist_tags)
-        st.write("User Search Tags:", user_search_tags)
+
 
         # Combine user-specific tags with product tags
-        user_specific_tags = 4 * user_cart_tags + 2 * user_wishlist_tags + user_search_tags
-        user_specific_tags = [tag for tags in user_specific_tags for tag in tags]
+        user_specific_tags = 2 * user_cart_tags + user_wishlist_tags + user_search_tags
+        # user_specific_tags = [tag for tags in user_specific_tags for tag in tags]
+        print(user_specific_tags)
 
-        st.write("User Specific Tags:", user_specific_tags)
 
         sig_scores = list(enumerate(sig[indx]))
 
-        # Consider user-specific tags for recommendations
+        # Combine user-specific tags with product tags
+        user_specific_tags = 4 * user_cart_tags + 2 * user_wishlist_tags + user_search_tags
+
+        sig_scores = list(enumerate(sig[indx]))
+
+        # Calculate combined score based on user-specific tags
+        combined_scores = []
+        for tag, score in sig_scores:
+            if tag in user_specific_tags:
+                combined_scores.append(score)
+
+        # Calculate the total combined score
+        total_combined_score = sum(combined_scores)
+
+        # Sort products based on the total combined score
+        sig_scores.sort(key=lambda x: x[1], reverse=True)
+
+        # Adjust the scores based on the total combined score
         for i, (tag, score) in enumerate(sig_scores):
             if tag in user_specific_tags:
-                st.write(f"Adjusting score for tag {tag}")
-                sig_scores[i] = (tag, score * 1.5)  # Adjust the score based on user interest
 
-        # Sorting products
-        sig_scores = sorted(sig_scores, key=lambda x: x[1], reverse=True)
+                adjusted_score = score * (total_combined_score / len(user_specific_tags))
+                sig_scores[i] = (tag, adjusted_score)
 
-        sig_scores = sig_scores[1:11]
+        # Sort products based on the adjusted scores
+        sig_scores.sort(key=lambda x: x[1], reverse=True)
 
-        product_indices = [i[0] for i in sig_scores]
+        # Get the top recommended products
+        top_recommendations = sig_scores[:5]
+
+        product_indices = [index for index, _ in top_recommendations]
 
         return dataset['product_url'].iloc[product_indices]
 
@@ -189,7 +221,7 @@ if st.session_state.login_successful:
         return "Product not found"
 
 
-    # ... (rest of your code)
+
 
     def get_product_image(product_url):
         product_row = st.session_state.df[st.session_state.df['product_url'] == product_url]
@@ -237,9 +269,7 @@ if st.session_state.login_successful:
         return st.session_state[key]
 
 
-    # ... (previous imports and code)
 
-    # ... (rest of your code)
 
     def func():
         initialize_session_state()
@@ -268,10 +298,13 @@ if st.session_state.login_successful:
                 pid = get_product_pid(x)
                 imageobj = get_product_image(x)
 
+
                 if imageobj is not None:
                     st.image(imageobj, width=250)
 
-                st.write(x)
+                product_row = df[df['product_url'] == x].iloc[0]
+                product_name = product_row['product_name']
+                st.write(product_name)
                 add_to_cart_key = f'add_to_cart_{pid}'  # Use a unique key for each button
                 add_to_wishlist_key = f'add_to_wishlist_{pid}'  # Unique key for wishlist button
 
@@ -353,7 +386,6 @@ if st.session_state.login_successful:
 
     if __name__ == '__main__':
         func()
-
 
 
 
