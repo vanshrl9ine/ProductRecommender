@@ -1,6 +1,6 @@
 # Product Recommendation System with Data Preprocessing and Streamlit App
 
-This repository contains Python code to preprocess product data, build a product recommendation system using TF-IDF vectors and a sigmoid kernel, and create a Streamlit web app for interactive product recommendations. The code is designed to help you set up a complete product recommendation system using your own dataset.
+This repository contains Python code to preprocess product data, build a product recommendation system using TF-IDF vectors and a sigmoid kernel, and create a Streamlit web app for interactive product recommendations. 
 
 # Prerequisites
 Make sure you have the following prerequisites installed on your system:
